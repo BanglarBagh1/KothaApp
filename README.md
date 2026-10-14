@@ -1,7 +1,7 @@
 # 🎙️ Kotha (কথা) — Next-Gen Continuous Voice Dictation for Android
 
 <p align="center">
-  <img src="app/src/main/res/drawable/ic_kotha_mark.xml" width="128" height="128" alt="Kotha Logo" />
+  <img src="assets/kotha-mark.svg" width="128" height="128" alt="Kotha Logo" />
 </p>
 
 <p align="center">
