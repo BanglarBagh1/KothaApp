@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -66,7 +67,7 @@ val stationIndexList = listOf(
     StationIndexItem("05", "Sound & Feel", "Beep suppression, haptic feedback, and audio ducking", listOf("sound", "beep", "mute", "haptic", "vibrate", "screen", "media")),
     StationIndexItem("06", "Language Tools", "Auto-punctuation, Bangla danda '।', digit conversion, and voice commands", listOf("punctuation", "danda", "digits", "numbers", "replacement", "commands", "voice")),
     StationIndexItem("07", "System", "Permission ledger, Self-healing AccessibilityKeeper, ADB command, and MIUI guide", listOf("system", "permission", "accessibility", "adb", "keeper", "repair", "xiaomi", "miui", "hyperos")),
-    StationIndexItem("08", "Data", "Themes, JSON export/import, profiles, and diagnostics event log", listOf("data", "theme", "json", "export", "import", "log", "diagnostics", "privacy", "about"))
+    StationIndexItem("08", "Data & Backup", "Export & import all settings to restore on a new phone, themes, event logs", listOf("data", "backup", "restore", "transfer", "phone", "settings", "theme", "json", "export", "import", "log", "diagnostics", "privacy", "about"))
 )
 
 @Composable
@@ -128,15 +129,28 @@ fun HomeScreen(
                     )
                 }
 
-                Button(
-                    onClick = onNavigateTestPad,
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
-                    shape = RoundedCornerShape(2.dp),
-                    modifier = Modifier.border(1.dp, colors.hairline, RoundedCornerShape(2.dp))
-                ) {
-                    Icon(imageVector = Icons.Default.Build, contentDescription = "Test Pad", tint = colors.accent)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "TEST PAD", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onNavigateStation("08") },
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp),
+                        modifier = Modifier.border(1.dp, colors.hairline, RoundedCornerShape(2.dp))
+                    ) {
+                        Icon(imageVector = Icons.Default.SettingsBackupRestore, contentDescription = "Backup and Restore Settings", tint = colors.accent)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "BACKUP", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                    }
+
+                    Button(
+                        onClick = onNavigateTestPad,
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp),
+                        modifier = Modifier.border(1.dp, colors.hairline, RoundedCornerShape(2.dp))
+                    ) {
+                        Icon(imageVector = Icons.Default.Build, contentDescription = "Test Pad", tint = colors.accent)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "TEST PAD", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                    }
                 }
             }
         }

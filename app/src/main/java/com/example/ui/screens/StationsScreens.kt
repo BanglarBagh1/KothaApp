@@ -41,8 +41,15 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -1562,6 +1569,199 @@ private fun Station08Data(settings: KothaSettings, repo: SettingsRepository) {
     val context = LocalContext.current
     val logs by DiagnosticsLog.entriesFlow.collectAsState()
 
+    var showManualImportDialog by remember { mutableStateOf(false) }
+    var manualJsonText by remember { mutableStateOf("") }
+    var manualImportError by remember { mutableStateOf<String?>(null) }
+    var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+    val exportFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val json = repo.getExportJson()
+                context.contentResolver.openOutputStream(uri)?.use { os ->
+                    os.write(json.toByteArray(Charsets.UTF_8))
+                }
+                Toast.makeText(context, "Settings backup exported successfully", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to export settings: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    val importFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val json = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    inputStream.bufferedReader(Charsets.UTF_8).readText()
+                }
+                if (!json.isNullOrBlank()) {
+                    val success = repo.importFromJson(json)
+                    if (success) {
+                        Toast.makeText(context, "All settings restored successfully!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Error: Invalid settings file format", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Selected file is empty", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    if (showManualImportDialog) {
+        AlertDialog(
+            onDismissRequest = { showManualImportDialog = false },
+            title = {
+                Text(
+                    text = "Restore Settings from JSON",
+                    fontFamily = DisplayFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = colors.textPrimary
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Paste the JSON backup configuration from your previous phone:",
+                        fontFamily = MonoFont,
+                        fontSize = 11.sp,
+                        color = colors.textMuted
+                    )
+
+                    Button(
+                        onClick = {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipText = cm.primaryClip?.getItemAt(0)?.text?.toString()
+                            if (!clipText.isNullOrBlank()) {
+                                manualJsonText = clipText
+                                manualImportError = null
+                            } else {
+                                Toast.makeText(context, "Clipboard is empty", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, colors.hairline, RoundedCornerShape(2.dp))
+                    ) {
+                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Paste", tint = colors.accent, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Paste from Clipboard", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                    }
+
+                    OutlinedTextField(
+                        value = manualJsonText,
+                        onValueChange = {
+                            manualJsonText = it
+                            manualImportError = null
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        placeholder = {
+                            Text(text = "{\n  \"primaryLanguage\": \"bn-BD\",\n  ...\n}", fontFamily = MonoFont, fontSize = 10.sp, color = colors.textMuted)
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.hairline,
+                            focusedContainerColor = colors.background,
+                            unfocusedContainerColor = colors.background
+                        ),
+                        shape = RoundedCornerShape(2.dp)
+                    )
+
+                    manualImportError?.let { err ->
+                        Text(
+                            text = err,
+                            fontFamily = MonoFont,
+                            fontSize = 11.sp,
+                            color = colors.signalCrimson
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (manualJsonText.isBlank()) {
+                            manualImportError = "Please enter or paste JSON settings text"
+                            return@Button
+                        }
+                        val success = repo.importFromJson(manualJsonText)
+                        if (success) {
+                            showManualImportDialog = false
+                            Toast.makeText(context, "All settings restored successfully!", Toast.LENGTH_LONG).show()
+                        } else {
+                            manualImportError = "Failed to parse JSON. Please check file format."
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                    shape = RoundedCornerShape(2.dp)
+                ) {
+                    Text(text = "Restore Settings", fontFamily = MonoFont, fontSize = 11.sp, color = colors.background)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showManualImportDialog = false }) {
+                    Text(text = "Cancel", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textMuted)
+                }
+            },
+            containerColor = colors.surface,
+            shape = RoundedCornerShape(4.dp)
+        )
+    }
+
+    if (showResetConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirmDialog = false },
+            title = {
+                Text(
+                    text = "Reset All Settings?",
+                    fontFamily = DisplayFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = colors.signalCrimson
+                )
+            },
+            text = {
+                Text(
+                    text = "This will restore all voice dictation parameters, orb styling, insertion timings, gestures, and language rules to initial factory defaults.",
+                    fontFamily = MonoFont,
+                    fontSize = 12.sp,
+                    color = colors.textPrimary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        repo.resetToDefaults()
+                        showResetConfirmDialog = false
+                        Toast.makeText(context, "Reset to factory defaults", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.signalCrimson),
+                    shape = RoundedCornerShape(2.dp)
+                ) {
+                    Text(text = "Reset", fontFamily = MonoFont, fontSize = 11.sp, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirmDialog = false }) {
+                    Text(text = "Cancel", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textMuted)
+                }
+            },
+            containerColor = colors.surface,
+            shape = RoundedCornerShape(4.dp)
+        )
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SettingCard(
             title = "Visual Appearance",
@@ -1584,105 +1784,152 @@ private fun Station08Data(settings: KothaSettings, repo: SettingsRepository) {
         }
 
         SettingCard(
-            title = "Diagnostics Log",
-            description = "In-memory event buffer of recognizer, accessibility bridge, and repair actions."
+            title = "Export & Import Settings",
+            description = "Backup your entire app configuration (voice parameters, floating orb styling, gestures, colors, coordinate positions, and custom vocabulary) into a JSON file to restore on a new phone as like your previous app."
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Section: Export
+                Text(
+                    text = "BACKUP SETTINGS (CURRENT PHONE)",
+                    fontFamily = MonoFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = colors.textMuted
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            exportFileLauncher.launch("kotha_settings_backup.json")
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .border(1.dp, colors.hairline, RoundedCornerShape(2.dp)),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.FileDownload, contentDescription = "Export File", tint = colors.accent, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "Save File", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                    }
+
+                    Button(
+                        onClick = {
+                            val json = repo.getExportJson()
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "application/json"
+                                putExtra(Intent.EXTRA_SUBJECT, "Kotha Settings Backup")
+                                putExtra(Intent.EXTRA_TEXT, json)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Settings Backup"))
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .border(1.dp, colors.hairline, RoundedCornerShape(2.dp)),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share", tint = colors.accent, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "Share", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                    }
+
+                    Button(
+                        onClick = {
+                            val json = repo.getExportJson()
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("Kotha Settings Backup", json))
+                            Toast.makeText(context, "Settings JSON copied", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .border(1.dp, colors.hairline, RoundedCornerShape(2.dp)),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Copy", tint = colors.accent, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "Copy", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Section: Import
+                Text(
+                    text = "RESTORE SETTINGS (NEW PHONE)",
+                    fontFamily = MonoFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = colors.textMuted
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            importFileLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .border(1.dp, colors.hairline, RoundedCornerShape(2.dp)),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.FileUpload, contentDescription = "Restore File", tint = colors.signalVerdigris, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Select File", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                    }
+
+                    Button(
+                        onClick = {
+                            manualJsonText = ""
+                            manualImportError = null
+                            showManualImportDialog = true
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .border(1.dp, colors.hairline, RoundedCornerShape(2.dp)),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Edit, contentDescription = "Paste JSON", tint = colors.signalVerdigris, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Paste JSON", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Section: Reset
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "${logs.size} recorded events", fontFamily = MonoFont, fontSize = 12.sp, color = colors.textMuted)
-                    Row {
-                        IconButton(
-                            onClick = {
-                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                cm.setPrimaryClip(ClipData.newPlainText("Kotha Diagnostics", DiagnosticsLog.getExportText()))
-                                Toast.makeText(context, "Diagnostics copied", Toast.LENGTH_SHORT).show()
-                            }
-                        ) {
-                            Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Copy", tint = colors.accent)
-                        }
-                        IconButton(
-                            onClick = {
-                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                    putExtra(Intent.EXTRA_TEXT, DiagnosticsLog.getExportText())
-                                    type = "text/plain"
-                                }
-                                context.startActivity(Intent.createChooser(sendIntent, "Share Diagnostics"))
-                            }
-                        ) {
-                            Icon(imageVector = Icons.Default.Share, contentDescription = "Share", tint = colors.accent)
-                        }
-                        IconButton(onClick = { DiagnosticsLog.clear() }) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Clear", tint = colors.textMuted)
-                        }
+                    Text(
+                        text = "Reset all configuration to factory defaults",
+                        fontFamily = MonoFont,
+                        fontSize = 11.sp,
+                        color = colors.textMuted,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { showResetConfirmDialog = true },
+                        modifier = Modifier.border(1.dp, colors.signalCrimson.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
+                        shape = RoundedCornerShape(2.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.RestartAlt, contentDescription = "Reset", tint = colors.signalCrimson, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Reset All", fontFamily = MonoFont, fontSize = 11.sp, color = colors.signalCrimson)
                     }
-                }
-
-                // Show top 5 recent events preview
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(colors.background)
-                        .border(1.dp, colors.hairline, RoundedCornerShape(2.dp))
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (logs.isEmpty()) {
-                        Text(text = "No diagnostic events yet.", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textMuted)
-                    } else {
-                        logs.take(6).forEach { entry ->
-                            Text(
-                                text = "[${entry.formattedTime}] [${entry.category.name}] ${entry.message}",
-                                fontFamily = MonoFont,
-                                fontSize = 10.sp,
-                                color = colors.textPrimary,
-                                maxLines = 2
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        SettingCard(
-            title = "Settings Backup & Profiles",
-            description = "JSON export, import, and restore defaults."
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = {
-                        val json = repo.getExportJson()
-                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cm.setPrimaryClip(ClipData.newPlainText("Kotha Config", json))
-                        Toast.makeText(context, "Settings JSON copied", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(1.dp, colors.hairline, RoundedCornerShape(2.dp)),
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
-                    shape = RoundedCornerShape(2.dp)
-                ) {
-                    Text(text = "Export JSON", fontFamily = MonoFont, fontSize = 11.sp, color = colors.textPrimary)
-                }
-
-                Button(
-                    onClick = {
-                        repo.resetToDefaults()
-                        Toast.makeText(context, "Reset to defaults", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .border(1.dp, colors.hairline, RoundedCornerShape(2.dp)),
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.surface),
-                    shape = RoundedCornerShape(2.dp)
-                ) {
-                    Text(text = "Reset All", fontFamily = MonoFont, fontSize = 11.sp, color = colors.signalCrimson)
                 }
             }
         }

@@ -308,7 +308,9 @@ class SettingsRepository(context: Context) {
             historyEnabled = historyEnabled,
             maxHistoryItems = maxHistory,
             appTheme = appTheme,
-            accentInk = accentInk
+            accentInk = accentInk,
+            orbPositionX = try { prefs.getFloat(KEY_ORB_X, 0.90f) } catch (e: Exception) { 0.90f },
+            orbPositionY = try { prefs.getFloat(KEY_ORB_Y, 0.50f) } catch (e: Exception) { 0.50f }
         )
     }
 
@@ -452,12 +454,23 @@ class SettingsRepository(context: Context) {
     }
 
     fun getExportJson(): String {
-        return cachedSettings.toJson()
+        val pos = getSavedOrbPosition()
+        return cachedSettings.copy(
+            orbPositionX = pos.first,
+            orbPositionY = pos.second
+        ).toJson()
     }
 
-    fun importFromJson(jsonString: String) {
-        val imported = KothaSettings.fromJson(jsonString)
-        updateSettings { imported }
+    fun importFromJson(jsonString: String): Boolean {
+        return try {
+            val imported = KothaSettings.fromJson(jsonString)
+            saveOrbPosition(imported.orbPositionX, imported.orbPositionY)
+            updateSettings { imported }
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("SettingsRepo", "Failed to import settings", e)
+            false
+        }
     }
 
     companion object {

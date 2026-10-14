@@ -150,6 +150,8 @@ data class KothaSettings(
     val hideOnLockScreen: Boolean = true,
     val doubleTapAction: GestureAction = GestureAction.SWITCH_MODE,
     val fixedScreenAnchor: String = "RIGHT_MIDDLE",
+    val orbPositionX: Float = 0.90f,
+    val orbPositionY: Float = 0.50f,
 
     // Colors
     val idleColor: Long = 0xFF171512,
@@ -244,6 +246,8 @@ data class KothaSettings(
         root.put("hideOnLockScreen", hideOnLockScreen)
         root.put("doubleTapAction", doubleTapAction.name)
         root.put("fixedScreenAnchor", fixedScreenAnchor)
+        root.put("orbPositionX", orbPositionX.toDouble())
+        root.put("orbPositionY", orbPositionY.toDouble())
 
         root.put("idleColor", idleColor)
         root.put("listeningColor", listeningColor)
@@ -357,6 +361,8 @@ data class KothaSettings(
                     GestureAction.valueOf(root.optString("doubleTapAction", base.doubleTapAction.name))
                 } catch (e: Exception) { base.doubleTapAction },
                 fixedScreenAnchor = root.optString("fixedScreenAnchor", base.fixedScreenAnchor),
+                orbPositionX = root.optDouble("orbPositionX", base.orbPositionX.toDouble()).toFloat(),
+                orbPositionY = root.optDouble("orbPositionY", base.orbPositionY.toDouble()).toFloat(),
 
                 idleColor = root.optLong("idleColor", base.idleColor),
                 listeningColor = root.optLong("listeningColor", base.listeningColor),
