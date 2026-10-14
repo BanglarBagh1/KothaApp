@@ -1,0 +1,96 @@
+name: Build & Release Kotha APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Release version tag (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+      release_title:
+        description: 'Release Title'
+        required: true
+        default: 'Kotha v1.0.0'
+      prerelease:
+        description: 'Mark as pre-release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Prepare Release APK Asset
+        run: |
+          mkdir -p release-artifacts
+          if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            cp "app/build/outputs/apk/debug/app-debug.apk" "release-artifacts/Kotha.apk"
+          elif [ -f "Kotha.apk" ]; then
+            cp "Kotha.apk" "release-artifacts/Kotha.apk"
+          elif [ -f "kotha.apk" ]; then
+            cp "kotha.apk" "release-artifacts/Kotha.apk"
+          fi
+          ls -lh release-artifacts/Kotha.apk
+
+      - name: Determine Release Tag
+        id: release_info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ github.event.inputs.version_tag }}" >> $GITHUB_OUTPUT
+            echo "RELEASE_NAME=${{ github.event.inputs.release_title }}" >> $GITHUB_OUTPUT
+            echo "IS_PRERELEASE=${{ github.event.inputs.prerelease }}" >> $GITHUB_OUTPUT
+          else
+            TAG=${GITHUB_REF#refs/tags/}
+            echo "TAG_NAME=$TAG" >> $GITHUB_OUTPUT
+            echo "RELEASE_NAME=Kotha $TAG" >> $GITHUB_OUTPUT
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create or Update GitHub Release with Kotha.apk
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.TAG_NAME }}
+          name: ${{ steps.release_info.outputs.RELEASE_NAME }}
+          body: |
+            ## Kotha (কথা) - Continuous Voice Dictation
+            
+            ### Download
+            - **[Kotha.apk](https://github.com/${{ github.repository }}/releases/download/${{ steps.release_info.outputs.TAG_NAME }}/Kotha.apk)** (Direct APK Download)
+
+            ### Installation Notes
+            1. Download `Kotha.apk` to your Android device.
+            2. When prompted by Android, tap **Settings** and allow **Install unknown apps** for your browser / file manager.
+            3. Open **Kotha**, grant microphone permission and enable the **Kotha Accessibility Service** to allow text insertion into any app.
+          files: release-artifacts/Kotha.apk
+          draft: false
+          prerelease: ${{ steps.release_info.outputs.IS_PRERELEASE == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
