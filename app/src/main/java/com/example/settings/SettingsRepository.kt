@@ -48,9 +48,9 @@ class SettingsRepository(context: Context) {
         val restartDelayMs = try { prefs.getLong(KEY_RESTART_DELAY_MS, base.restartDelayMs) } catch (e: Exception) { base.restartDelayMs }
         val seamlessRestartMs = try { prefs.getLong(KEY_SEAMLESS_RESTART_MS, base.seamlessRestartMs) } catch (e: Exception) { base.seamlessRestartMs }
         val rawSilence = try { prefs.getLong(KEY_SILENCE_COMPLETE_MS, base.silenceCompleteMs) } catch (e: Exception) { base.silenceCompleteMs }
-        val silenceCompleteMs = if (rawSilence >= 15000L) 1800L else rawSilence.coerceIn(500L, 8000L)
+        val silenceCompleteMs = if (rawSilence >= 15000L) base.silenceCompleteMs else rawSilence.coerceIn(500L, 8000L)
         val rawSilencePoss = try { prefs.getLong(KEY_SILENCE_POSS_MS, base.silencePossiblyCompleteMs) } catch (e: Exception) { base.silencePossiblyCompleteMs }
-        val silencePossMs = if (rawSilencePoss >= 15000L) 1200L else rawSilencePoss.coerceIn(400L, 6000L)
+        val silencePossMs = if (rawSilencePoss >= 15000L) base.silencePossiblyCompleteMs else rawSilencePoss.coerceIn(400L, 6000L)
         val minUtterance = try { prefs.getInt(KEY_MIN_UTTERANCE, base.minUtteranceLength) } catch (e: Exception) { base.minUtteranceLength }
         val commitPartial = try { prefs.getBoolean(KEY_COMMIT_PARTIAL_LONG_SILENCE, base.commitPartialOnLongSilence) } catch (e: Exception) { base.commitPartialOnLongSilence }
         val maxSessionSec = try { prefs.getInt(KEY_MAX_SESSION_SEC, base.maxSessionLengthSec) } catch (e: Exception) { base.maxSessionLengthSec }
