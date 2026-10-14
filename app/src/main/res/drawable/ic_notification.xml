@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Solid white disc radius 2.6 at centre (12,12) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,9.4 A2.6,2.6 0 1,1 11.99,9.4 Z" />
+    <!-- Simplified radial ticks with 1 o'clock gap -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="square"
+        android:fillColor="#00000000"
+        android:pathData="M18.2,12.0L21.0,12.0 M16.38,16.38L18.36,18.36 M12.0,18.2L12.0,21.0 M7.62,16.38L5.64,18.36 M5.8,12.0L3.0,12.0 M7.62,7.62L5.64,5.64 M12.0,5.8L12.0,3.0" />
+</vector>

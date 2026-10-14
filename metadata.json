@@ -1,0 +1,6 @@
+{
+  "name": "Kotha",
+  "description": "Continuous floating voice-dictation utility for Bangla (কথা) and other languages with accessibility text insertion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

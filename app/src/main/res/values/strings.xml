@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">Kotha</string>
+    <string name="app_wordmark">কথা</string>
+    <string name="accessibility_service_name">Kotha Voice Bridge</string>
+    <string name="accessibility_service_description">Used strictly to insert dictated text into focused fields in other apps and detect keyboard height. No text or data is stored, logged, or sent anywhere.</string>
+    <string name="tile_label">Kotha</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">Kotha Voice Dictation</string>
+    <string name="notification_channel_desc">Active dictation status, speech controls, and quick actions</string>
+    <string name="notification_title_active">Kotha is active</string>
+    <string name="notification_title_listening">Listening for speech…</string>
+    <string name="notification_title_waiting">Waiting to restart…</string>
+    <string name="notification_title_paused">Dictation paused</string>
+    <string name="notification_action_start">Listen</string>
+    <string name="notification_action_stop">Stop</string>
+    <string name="notification_action_pause">Pause</string>
+    <string name="notification_action_resume">Resume</string>
+    <string name="notification_action_undo">Undo</string>
+    <string name="notification_action_hide">Hide Orb</string>
+    <string name="notification_action_open">Open App</string>
+    <string name="notification_action_stop_repair">Stop Auto-Repair</string>
+
+    <string name="notification_boot_title">Kotha is ready</string>
+    <string name="notification_boot_text">Tap to display the floating dictation button.</string>
+</resources>
